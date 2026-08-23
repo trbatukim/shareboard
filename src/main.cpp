@@ -4,8 +4,10 @@
 static HHOOK g_keyboardHook = nullptr;
 static HHOOK g_mouseHook = nullptr;
 
-static const char* KeyboardEventName(WPARAM wParam) {
-    switch (wParam) {
+static const char* KeyboardEventName(WPARAM wParam) 
+{
+    switch (wParam) 
+    {
         case WM_KEYDOWN:    return "KEYDOWN";
         case WM_KEYUP:      return "KEYUP";
         case WM_SYSKEYDOWN: return "SYSKEYDOWN";  // Alt
@@ -14,8 +16,10 @@ static const char* KeyboardEventName(WPARAM wParam) {
     }
 }
 
-static const char* MouseEventName(WPARAM wParam) {
-    switch (wParam) {
+static const char* MouseEventName(WPARAM wParam) 
+{
+    switch (wParam) 
+    {
         case WM_MOUSEMOVE:      return "MOUSEMOVE";
         case WM_LBUTTONDOWN:    return "LBUTTONDOWN";
         case WM_LBUTTONUP:      return "LBUTTONUP";
@@ -31,10 +35,12 @@ static const char* MouseEventName(WPARAM wParam) {
     }
 }
 
-static void FormatMouseDetail(WPARAM wParam, short high, char* out, size_t n) {
+static void FormatMouseDetail(WPARAM wParam, short high, char* out, size_t n) 
+{
     out[0] = '\0';
 
-    switch (wParam) {
+    switch (wParam) 
+    {
         case WM_MOUSEWHEEL:
         case WM_MOUSEHWHEEL:
             snprintf(out, n, "delta=%d", high);
@@ -48,7 +54,8 @@ static void FormatMouseDetail(WPARAM wParam, short high, char* out, size_t n) {
     }
 }
 
-static bool IsQuitCombo(const KBDLLHOOKSTRUCT* key, WPARAM wParam) {
+static bool IsQuitCombo(const KBDLLHOOKSTRUCT* key, WPARAM wParam) 
+{
     if (wParam != WM_KEYDOWN && wParam != WM_SYSKEYDOWN) return false;
     if (key->vkCode != 'Q') return false;
 
@@ -58,8 +65,10 @@ static bool IsQuitCombo(const KBDLLHOOKSTRUCT* key, WPARAM wParam) {
     return ctrl && alt;
 }
 
-LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
-    if (nCode == HC_ACTION) {
+LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) 
+{
+    if (nCode == HC_ACTION) 
+    {
         const KBDLLHOOKSTRUCT* key = reinterpret_cast<const KBDLLHOOKSTRUCT*>(lParam);
 
         // LLKHF_INJECTED marks events produced by SendInput rather than real
@@ -75,7 +84,8 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
                (key->flags & LLKHF_EXTENDED) ? "[ext] " : "",
                injected ? "[injected]" : "");
 
-        if (IsQuitCombo(key, wParam)) {
+        if (IsQuitCombo(key, wParam)) 
+        {
             printf("\nCtrl+Alt+Q shutting down.\n");
             PostQuitMessage(0);
             return 1;
@@ -85,8 +95,10 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     return CallNextHookEx(g_keyboardHook, nCode, wParam, lParam);
 }
 
-LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
-    if (nCode == HC_ACTION && wParam != WM_MOUSEMOVE) {
+LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) 
+{
+    if (nCode == HC_ACTION && wParam != WM_MOUSEMOVE) 
+    {
         const MSLLHOOKSTRUCT* mouse = reinterpret_cast<const MSLLHOOKSTRUCT*>(lParam);
 
         // mouseData only carries a payload for wheels and X buttons, and it
@@ -109,14 +121,16 @@ LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 int main() {
     g_keyboardHook = SetWindowsHookExW(WH_KEYBOARD_LL, LowLevelKeyboardProc, nullptr, 0);
 
-    if (!g_keyboardHook){
+    if (!g_keyboardHook)
+    {
         printf("SetWindowsHookExW failed: %lu\n", GetLastError());
         return 1;
     }
 
     g_mouseHook = SetWindowsHookExW(WH_MOUSE_LL, LowLevelMouseProc, nullptr, 0);
 
-    if (!g_mouseHook){
+    if (!g_mouseHook)
+    {
         printf("SetWindowsHookExW failed: %lu\n", GetLastError());
         UnhookWindowsHookEx(g_keyboardHook);
         return 1;
@@ -126,7 +140,8 @@ int main() {
 
     MSG msg;
     BOOL result;
-    while ((result = GetMessageW(&msg, nullptr, 0, 0)) != 0) {
+    while ((result = GetMessageW(&msg, nullptr, 0, 0)) != 0) 
+    {
         if (result == -1) break;
         TranslateMessage(&msg);
         DispatchMessageW(&msg);

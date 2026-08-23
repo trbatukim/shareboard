@@ -1,5 +1,7 @@
 #include <windows.h>
 #include <cstdio>
+#include <cstring>
+#include "net.h"
 
 static HHOOK g_keyboardHook = nullptr;
 static HHOOK g_mouseHook = nullptr;
@@ -118,7 +120,8 @@ LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam)
     return CallNextHookEx(g_mouseHook, nCode, wParam, lParam);
 }
 
-int main() {
+static int RunHooks()
+{
     g_keyboardHook = SetWindowsHookExW(WH_KEYBOARD_LL, LowLevelKeyboardProc, nullptr, 0);
 
     if (!g_keyboardHook)
@@ -150,4 +153,18 @@ int main() {
     UnhookWindowsHookEx(g_keyboardHook);
     UnhookWindowsHookEx(g_mouseHook);
     return 0;
+}
+
+int main(int argc, char** argv) {
+    if (argc < 2) {
+        fprintf(stderr, "usage: %s <server|client|hooks>\n", argv[0]);
+        return 1;
+    }
+
+    if (strcmp(argv[1], "server") == 0) return RunServer();
+    if (strcmp(argv[1], "client") == 0) return RunClient();
+    if (strcmp(argv[1], "hooks")  == 0) return RunHooks();
+
+    fprintf(stderr, "unknown mode: %s\n", argv[1]);
+    return 1;
 }

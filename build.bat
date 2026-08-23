@@ -29,9 +29,9 @@ if errorlevel 1 (
 if not exist build mkdir build
 
 cl /nologo /W4 /EHsc /std:c++17 /Zi ^
-   src\main.cpp ^
+   src\*.cpp ^
    /Fe:build\shareboard.exe /Fo:build\ /Fd:build\ ^
-   /link user32.lib
+   /link user32.lib ws2_32.lib
 
 if errorlevel 1 (
     echo.

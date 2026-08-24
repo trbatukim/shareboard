@@ -122,6 +122,8 @@ LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam)
 
 static int RunHooks()
 {
+    NetStartSender("127.0.0.1");
+
     g_keyboardHook = SetWindowsHookExW(WH_KEYBOARD_LL, LowLevelKeyboardProc, nullptr, 0);
 
     if (!g_keyboardHook)
@@ -152,6 +154,8 @@ static int RunHooks()
 
     UnhookWindowsHookEx(g_keyboardHook);
     UnhookWindowsHookEx(g_mouseHook);
+
+    NetStopSender();
     return 0;
 }
 
@@ -161,9 +165,9 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (strcmp(argv[1], "server") == 0) return RunServer();
-    if (strcmp(argv[1], "client") == 0) return RunClient();
-    if (strcmp(argv[1], "hooks")  == 0) return RunHooks();
+    if (strcmp(argv[1], "-s") == 0) return RunServer();
+    if (strcmp(argv[1], "-c") == 0) return RunClient();
+    if (strcmp(argv[1], "-h")  == 0) return RunHooks();
 
     fprintf(stderr, "unknown mode: %s\n", argv[1]);
     return 1;

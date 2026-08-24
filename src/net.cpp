@@ -5,11 +5,33 @@
 #include <cstdint>
 #include <cstring>
 #include <sys/types.h>
+#include <process.h>
+#include "queue.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
 static const unsigned short kPort = 54000;
 static const uint32_t kMaxMessage = 256;
+static SOCKET g_senderSocket = INVALID_SOCKET;
+static EventQueue g_queue;
+static HANDLE g_senderThread = nullptr;
+
+static bool SendAll(SOCKET s, const char* data, int len);
+
+static unsigned __stdcall SenderThread(void*)
+{
+    InputEvent ev;
+
+    while (g_queue.Pop(ev))
+    {
+        if (!SendAll(g_senderSocket, reinterpret_cast<const char*>(&ev), sizeof(ev)))
+        {
+            break;
+        }
+    }
+
+    return 0;
+}
 
 static bool SendAll(SOCKET s, const char* data, int len)
 {
@@ -260,4 +282,101 @@ int RunClient()
     closesocket(connectSocket);
     WSACleanup();
     return 0;
+}
+
+bool NetStartSender(const char* ip)
+{
+    WSADATA wsaData;
+    int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+    if (iResult != 0)
+    {
+        fprintf(stderr, "WSA startup failed %d\n", iResult);
+        return false;
+    }
+
+    g_senderSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+    if (g_senderSocket == INVALID_SOCKET)
+    {
+        fprintf(stderr, "Error at socket(): %d\n", WSAGetLastError());
+        WSACleanup();
+        return false;
+    }
+
+    sockaddr_in serverAddr = {};
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(kPort);
+
+    iResult = inet_pton(AF_INET, ip, &serverAddr.sin_addr);
+
+    if (iResult <= 0) 
+    {
+        fprintf(stderr, "Inavlid address / Address not supported\n");
+        closesocket(g_senderSocket);
+        g_senderSocket = INVALID_SOCKET;
+        WSACleanup();
+        return false;
+    }
+
+    printf("Connecting to server...\n");
+    iResult = connect(g_senderSocket, (sockaddr*)&serverAddr, sizeof(serverAddr));
+
+    if (iResult == SOCKET_ERROR) 
+    {
+        fprintf(stderr, "Connection failed: %d\n", WSAGetLastError());
+        closesocket(g_senderSocket);
+        g_senderSocket = INVALID_SOCKET;
+        WSACleanup();
+        return false;
+    }
+
+    EnableTCPNoDelay(g_senderSocket);
+    printf("Connected to server successfully.\n");
+
+    if (!g_queue.Init())
+    {
+        closesocket(g_senderSocket);
+        g_senderSocket = INVALID_SOCKET;
+        WSACleanup();
+        return false;
+    }
+
+    g_senderThread = (HANDLE)_beginthreadex(nullptr, 0, SenderThread, nullptr, 0, nullptr);
+
+    if (g_senderThread == nullptr)
+    {
+        g_queue.Destroy();
+        closesocket(g_senderSocket);
+        g_senderSocket = INVALID_SOCKET;
+        WSACleanup();
+        return false;
+    }
+
+    return true;
+}
+
+void NetStopSender()
+{
+    if (g_senderThread != nullptr)
+    {
+        g_queue.Stop();
+        WaitForSingleObject(g_senderThread, INFINITE);
+        CloseHandle(g_senderThread);
+        g_senderThread = nullptr;
+    }
+
+    g_queue.Destroy();
+
+    if (g_senderSocket != INVALID_SOCKET)
+    {
+        closesocket(g_senderSocket);
+        g_senderSocket = INVALID_SOCKET;
+    }
+
+    WSACleanup();
+}
+
+void NetQueueEvent(const InputEvent& ev) {
+    g_queue.Push(ev);
 }
